@@ -8,12 +8,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
-  SHOPIFY_API_KEY: z.string().optional(),
-  SHOPIFY_API_SECRET: z.string().optional(),
-
-  DEFAULT_REFERRAL_THRESHOLD: z.coerce.number().default(10),
-  DEFAULT_REWARD_VALUE: z.coerce.number().default(1000),
-  DEFAULT_VALIDATION_DELAY_DAYS: z.coerce.number().default(7),
+  SHOPIFY_API_KEY: z.string().min(1),
+  SHOPIFY_API_SECRET: z.string().min(1),
 
   FRONTEND_URL: z.string().default('http://localhost:5173'),
 });
@@ -36,11 +32,6 @@ export const config = {
   shopify: {
     apiKey: env.SHOPIFY_API_KEY,
     apiSecret: env.SHOPIFY_API_SECRET,
-  },
-  defaults: {
-    referralThreshold: env.DEFAULT_REFERRAL_THRESHOLD,
-    rewardValue: env.DEFAULT_REWARD_VALUE,
-    validationDelayDays: env.DEFAULT_VALIDATION_DELAY_DAYS,
   },
   frontendUrl: env.FRONTEND_URL,
 } as const;

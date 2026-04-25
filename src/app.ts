@@ -2,12 +2,15 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import cookie from '@fastify/cookie';
 import { config } from './config.js';
 import { redis } from './queues/index.js';
 
 import healthRoute from './routes/health.js';
 import webhooksRoute from './routes/webhooks.js';
 import referralRoute from './routes/referral.js';
+import authRoute from './routes/auth.js';
+import shopsRoute from './routes/shops.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -36,10 +39,14 @@ export async function buildApp() {
     redis,
   });
 
+  await app.register(cookie);
+
   // ---------------------------------------------------------------------------
   // Routes
   // ---------------------------------------------------------------------------
   await app.register(healthRoute);
+  await app.register(authRoute);
+  await app.register(shopsRoute);
   await app.register(webhooksRoute);
   await app.register(referralRoute);
 
