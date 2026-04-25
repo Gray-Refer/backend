@@ -1,0 +1,33 @@
+{
+  "name": "gray-refer-backend",
+  "version": "1.0.0",
+  "description": "Zero-cost referral system for D2C brands — Shopify-first",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc --outDir dist",
+    "start": "node dist/server.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.0",
+    "@fastify/helmet": "^13.0.0",
+    "@fastify/rate-limit": "^10.0.0",
+    "bullmq": "^5.28.0",
+    "drizzle-orm": "^0.38.4",
+    "fastify": "^5.2.1",
+    "ioredis": "^5.3.2",
+    "nanoid": "^5.0.9",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "drizzle-kit": "^0.29.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
