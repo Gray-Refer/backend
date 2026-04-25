@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq';
-import { redis } from '../queues/index.js';
+import { redis, notificationQueue } from '../queues/index.js';
 import { approveReferral } from '../services/referral.service.js';
 import { checkAndUnlockReward } from '../services/reward.service.js';
 import { generateDiscountForReward } from '../services/discount.service.js';
@@ -28,6 +28,17 @@ export function startRewardWorker() {
       console.info(
         `[reward-worker] Unlocked reward ${reward.id} → discount code ${discount.code} for user ${referrerId}`,
       );
+
+      // Queue REWARD_UNLOCKED notification (WhatsApp-first, email fallback)
+      await notificationQueue
+        .add('reward-unlocked', {
+          userId: referrerId,
+          shopId: reward.shopId,
+          event: 'REWARD_UNLOCKED',
+          discountCode: discount.code,
+          rewardValue: reward.value,
+        })
+        .catch(() => { /* non-fatal */ });
     },
     {
       connection: redis,

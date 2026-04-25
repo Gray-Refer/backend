@@ -2,6 +2,8 @@ import { buildApp } from './app.js';
 import { config } from './config.js';
 import { startWebhookWorker } from './workers/webhook.worker.js';
 import { startRewardWorker } from './workers/reward.worker.js';
+import { startWhatsAppWorker } from './workers/whatsapp.worker.js';
+import { startNotificationWorker } from './workers/notification.worker.js';
 
 async function main() {
   const app = await buildApp();
@@ -9,6 +11,8 @@ async function main() {
   // Start BullMQ workers
   const webhookWorker = startWebhookWorker();
   const rewardWorker = startRewardWorker();
+  const whatsappWorker = startWhatsAppWorker();
+  const notificationWorker = startNotificationWorker();
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
@@ -17,6 +21,8 @@ async function main() {
       app.close(),
       webhookWorker.close(),
       rewardWorker.close(),
+      whatsappWorker.close(),
+      notificationWorker.close(),
     ]);
     process.exit(0);
   };

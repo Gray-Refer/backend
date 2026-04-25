@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq';
-import { redis, rewardQueue } from '../queues/index.js';
+import { redis, rewardQueue, notificationQueue } from '../queues/index.js';
 import { getActiveShop, upsertUser, createPendingReferral, getUserByReferralCode } from '../services/referral.service.js';
 import { markDiscountUsed } from '../services/discount.service.js';
 import type { WebhookJobData } from '../queues/index.js';
@@ -45,12 +45,17 @@ async function handleOrderCreate(
   if (!email) return;
 
   const shopifyCustomerId = customer?.id ? String(customer.id) : undefined;
+  const phone = customer?.phone as string | undefined;
 
   // 1. Ensure the purchaser exists as a user (so they can refer later)
-  const purchaser = await upsertUser(shop.id, email, shopifyCustomerId);
-  void purchaser; // used below if they're the referrer
+  const purchaser = await upsertUser(shop.id, email, shopifyCustomerId, phone);
 
-  // 2. Check if this order was referred
+  // 2. Queue a POST_PURCHASE notification (WhatsApp-first, email fallback)
+  await notificationQueue
+    .add('post-purchase', { userId: purchaser.id, shopId: shop.id, event: 'POST_PURCHASE' })
+    .catch(() => { /* non-fatal */ });
+
+  // 3. Check if this order was referred
   const noteAttributes = payload.note_attributes as { name: string; value: string }[] | undefined;
   const refCode = noteAttributes?.find(
     (a) => a.name === 'ref' || a.name === 'referral_code',
@@ -81,7 +86,7 @@ async function handleOrderCreate(
     return;
   }
 
-  // 3. Schedule validation job after the shop's delay window
+  // 4. Schedule validation job after the shop's delay window
   const delayMs = shop.validationDelayDays * 24 * 60 * 60 * 1000;
   await rewardQueue.add(
     'validate-referral',
@@ -89,7 +94,7 @@ async function handleOrderCreate(
     { delay: delayMs },
   );
 
-  // 4. Track if a GRAY-REFER coupon was redeemed on this order
+  // 5. Track if a GRAY-REFER coupon was redeemed on this order
   const discountCodes = payload.discount_codes as { code: string }[] | undefined;
   for (const d of discountCodes ?? []) {
     if (d.code.startsWith('REFER-')) {

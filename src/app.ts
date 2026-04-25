@@ -11,6 +11,8 @@ import webhooksRoute from './routes/webhooks.js';
 import referralRoute from './routes/referral.js';
 import authRoute from './routes/auth.js';
 import shopsRoute from './routes/shops.js';
+import whatsappRoute from './routes/whatsapp.js';
+import analyticsRoute from './routes/analytics.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -30,7 +32,7 @@ export async function buildApp() {
 
   await app.register(cors, {
     origin: config.isDev ? true : [config.frontendUrl],
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
   await app.register(rateLimit, {
@@ -49,6 +51,8 @@ export async function buildApp() {
   await app.register(shopsRoute);
   await app.register(webhooksRoute);
   await app.register(referralRoute);
+  await app.register(whatsappRoute);
+  await app.register(analyticsRoute);
 
   // ---------------------------------------------------------------------------
   // Global error handler

@@ -3,17 +3,32 @@ import { z } from 'zod';
 import { getReferralProgress, getUserByReferralCode } from '../services/referral.service.js';
 import { getUserRewards } from '../services/reward.service.js';
 import { db } from '../db/index.js';
-import { discounts } from '../db/schema.js';
+import { discounts, referralClicks } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 const referralRoute: FastifyPluginAsync = async (fastify) => {
 
-  // GET /referral/code/:code — resolve referral code to referrer info (used by frontend landing page)
-  fastify.get<{ Params: { code: string } }>(
+  // GET /referral/code/:code?src=whatsapp — resolve referral code + log the click
+  fastify.get<{
+    Params: { code: string };
+    Querystring: { src?: string };
+  }>(
     '/referral/code/:code',
     async (req, reply) => {
       const user = await getUserByReferralCode(req.params.code);
       if (!user) return reply.status(404).send({ error: 'Invalid referral code' });
+
+      const validSources = ['whatsapp', 'email', 'direct'] as const;
+      type Source = typeof validSources[number];
+      const rawSrc = req.query.src ?? 'direct';
+      const source: Source | 'unknown' = (validSources as readonly string[]).includes(rawSrc)
+        ? (rawSrc as Source)
+        : 'unknown';
+
+      // Fire-and-forget — never block the redirect on a logging failure
+      db.insert(referralClicks)
+        .values({ shopId: user.shopId, referralCode: user.referralCode, source })
+        .catch(() => { /* non-fatal */ });
 
       return {
         referralCode: user.referralCode,

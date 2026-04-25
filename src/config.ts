@@ -12,6 +12,13 @@ const envSchema = z.object({
   SHOPIFY_API_SECRET: z.string().min(1),
 
   FRONTEND_URL: z.string().default('http://localhost:5173'),
+
+  // 32-byte AES-256 key encoded as 64 hex characters — generate with:
+  // node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  ENCRYPTION_KEY: z.string().length(64),
+
+  RESEND_API_KEY: z.string().min(1),
+  RESEND_FROM_EMAIL: z.string().email().default('referrals@yourapp.com'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -34,4 +41,9 @@ export const config = {
     apiSecret: env.SHOPIFY_API_SECRET,
   },
   frontendUrl: env.FRONTEND_URL,
+  encryptionKey: env.ENCRYPTION_KEY,
+  resend: {
+    apiKey: env.RESEND_API_KEY,
+    fromEmail: env.RESEND_FROM_EMAIL,
+  },
 } as const;

@@ -2,6 +2,7 @@ import {
   boolean,
   integer,
   pgTable,
+  text,
   timestamp,
   uuid,
   varchar,
@@ -34,6 +35,7 @@ export const users = pgTable('users', {
     .references(() => shops.id, { onDelete: 'cascade' }),
   email: varchar('email', { length: 255 }).notNull(),
   shopifyCustomerId: varchar('shopify_customer_id', { length: 64 }),
+  phone: varchar('phone', { length: 20 }),
   referralCode: varchar('referral_code', { length: 24 }).notNull().unique(),
   referralCount: integer('referral_count').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -106,6 +108,55 @@ export const discounts = pgTable('discounts', {
 });
 
 // ---------------------------------------------------------------------------
+// integrations — one row per connected WhatsApp provider per shop
+// ---------------------------------------------------------------------------
+export const integrations = pgTable('integrations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  shopId: uuid('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  provider: varchar('provider', { length: 20 }).notNull(), // 'twilio' | 'meta'
+  credentials: text('credentials').notNull(),              // AES-256-GCM encrypted JSON
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// message_logs — audit trail for every notification send attempt (WhatsApp or email)
+// ---------------------------------------------------------------------------
+export const messageLogs = pgTable('message_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  shopId: uuid('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  integrationId: uuid('integration_id').references(() => integrations.id, {
+    onDelete: 'set null',
+  }),
+  channel: varchar('channel', { length: 20 }).notNull().default('whatsapp'), // whatsapp | email
+  provider: varchar('provider', { length: 20 }).notNull(),                   // twilio | meta | resend
+  recipient: text('recipient').notNull(),                                     // phone or email address
+  message: text('message').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),    // pending | sent | failed
+  error: text('error'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// referral_clicks — one row per landing-page hit, with source attribution
+// ---------------------------------------------------------------------------
+export const referralClicks = pgTable('referral_clicks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  shopId: uuid('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  referralCode: varchar('referral_code', { length: 24 }).notNull(),
+  source: varchar('source', { length: 20 }).notNull().default('unknown'), // whatsapp | email | direct | unknown
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
 // Relations
 // ---------------------------------------------------------------------------
 export const shopsRelations = relations(shops, ({ many }) => ({
@@ -113,6 +164,27 @@ export const shopsRelations = relations(shops, ({ many }) => ({
   referrals: many(referrals),
   rewards: many(rewards),
   discounts: many(discounts),
+  integrations: many(integrations),
+  messageLogs: many(messageLogs),
+  referralClicks: many(referralClicks),
+}));
+
+export const integrationsRelations = relations(integrations, ({ one, many }) => ({
+  shop: one(shops, { fields: [integrations.shopId], references: [shops.id] }),
+  messageLogs: many(messageLogs),
+}));
+
+export const messageLogsRelations = relations(messageLogs, ({ one }) => ({
+  shop: one(shops, { fields: [messageLogs.shopId], references: [shops.id] }),
+  user: one(users, { fields: [messageLogs.userId], references: [users.id] }),
+  integration: one(integrations, {
+    fields: [messageLogs.integrationId],
+    references: [integrations.id],
+  }),
+}));
+
+export const referralClicksRelations = relations(referralClicks, ({ one }) => ({
+  shop: one(shops, { fields: [referralClicks.shopId], references: [shops.id] }),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -152,3 +224,9 @@ export type Reward = typeof rewards.$inferSelect;
 export type NewReward = typeof rewards.$inferInsert;
 export type Discount = typeof discounts.$inferSelect;
 export type NewDiscount = typeof discounts.$inferInsert;
+export type Integration = typeof integrations.$inferSelect;
+export type NewIntegration = typeof integrations.$inferInsert;
+export type MessageLog = typeof messageLogs.$inferSelect;
+export type NewMessageLog = typeof messageLogs.$inferInsert;
+export type ReferralClick = typeof referralClicks.$inferSelect;
+export type NewReferralClick = typeof referralClicks.$inferInsert;

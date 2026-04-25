@@ -27,6 +27,7 @@ export async function upsertUser(
   shopId: string,
   email: string,
   shopifyCustomerId?: string,
+  phone?: string,
 ): Promise<User> {
   const [existing] = await db
     .select()
@@ -35,10 +36,18 @@ export async function upsertUser(
     .limit(1);
 
   if (existing) {
-    if (shopifyCustomerId && existing.shopifyCustomerId !== shopifyCustomerId) {
+    const needsUpdate =
+      (shopifyCustomerId && existing.shopifyCustomerId !== shopifyCustomerId) ||
+      (phone && existing.phone !== phone);
+
+    if (needsUpdate) {
       const [updated] = await db
         .update(users)
-        .set({ shopifyCustomerId, updatedAt: new Date() })
+        .set({
+          ...(shopifyCustomerId ? { shopifyCustomerId } : {}),
+          ...(phone ? { phone } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(users.id, existing.id))
         .returning();
       return updated!;
@@ -52,6 +61,7 @@ export async function upsertUser(
       shopId,
       email,
       shopifyCustomerId,
+      phone,
       referralCode: generateCode(),
     })
     .returning();
